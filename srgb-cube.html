@@ -76,7 +76,8 @@ function draw() {
     //     drawPoi(poi);
     // }
 
-    for(let i = 0; i < 40; i++) {
+    // RG vortex
+    for(let i = 0; i < 400; i++) {
         strokeWeight(10);
         const time = millis() + i * 10;
         const t = (1 - Math.sin(time * 0.005)) / 2;
@@ -85,6 +86,17 @@ function draw() {
     
         drawPoi(poi);
     }
+
+    // GB vortex
+    // for(let i = 0; i < 400; i++) {
+    //     strokeWeight(10);
+    //     const time = millis() + i * 10;
+    //     const t = (1 - Math.sin(time * 0.005)) / 2;
+    //     const ct = (1 + Math.cos(time * 0.005)) / 2;
+    //     poi.set((time * 0.0001) % 1, t, ct);
+    
+    //     drawPoi(poi);
+    // }
 
     noFill();
     stroke(255,255,255,64);
