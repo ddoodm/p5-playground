@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>p5.js Sketch</title>
+    <script src="https://cdn.jsdelivr.net/npm/p5@latest"></script>
+</head>
+<body>
+    <script>
+const BOX_SZ = 200;
+
+let poi;
+
+function mod(n, m) {
+    return ((n % m) + m) % m;
+}
+
+function toBoxBasis(vec) {
+  let v = vec.copy();
+  v.sub(0.5, 0.5, 0.5);
+  v.mult(BOX_SZ, BOX_SZ, BOX_SZ);
+  return v;
+}
+
+function drawPoi(poi) {
+    stroke(poi.x * 255, poi.y * 255, poi.z * 255);
+    point(toBoxBasis(poi));
+}
+
+function setup() {
+  createCanvas(400, 400, WEBGL);
+  poi = createVector(1, 0, 0);
+}
+
+function draw() {
+  background(25);
+  
+  rotateX(65 / 180 * PI);
+  rotateZ(millis() * 0.0005);
+
+//   poi.x = mod(poi.x - 0.01, 1);
+//   poi.y = mod(poi.y + 0.01, 1);
+//   poi.z = mod(poi.z + 0.01, 1);
+
+    // through grey
+    // for(let i = 0; i < 10; i++) {
+    //     strokeWeight(10);
+    //     const time = millis() + i * 20;
+    //     const t = (1 - Math.sin(time * 0.001)) / 2;
+    //     poi.set(1 - t, t, t);
+    
+    //     drawPoi(poi);
+    // }
+
+    // rainbow
+    // for(let i = 0; i < 40; i++) {
+    //     strokeWeight(10);
+    //     const time = millis() + i * 10;
+    //     const t = (1 - Math.sin(time * 0.005)) / 2;
+    //     const ct = (1 + Math.cos(time * 0.005)) / 2;
+    //     poi.set(1 - t, ct, t);
+    
+    //     drawPoi(poi);
+    // }
+    
+    // rainbow pass through grey
+    // for(let i = 0; i < 80; i++) {
+    //     strokeWeight(10);
+    //     const time = millis() + i * 5;
+    //     const r = (1 + Math.sin(time * 0.001)) / 2;
+    //     const t = (1 - (Math.sin(time * 0.005) * r)) / 2;
+    //     const ct = (1 + (Math.cos(time * 0.005) * r)) / 2;
+    //     poi.set(1 - t, ct, t);
+    
+    //     drawPoi(poi);
+    // }
+
+    for(let i = 0; i < 40; i++) {
+        strokeWeight(10);
+        const time = millis() + i * 10;
+        const t = (1 - Math.sin(time * 0.005)) / 2;
+        const ct = (1 + Math.cos(time * 0.005)) / 2;
+        poi.set(t, ct, (time * 0.0001) % 1);
+    
+        drawPoi(poi);
+    }
+
+    noFill();
+    stroke(255,255,255,64);
+    strokeWeight(1);
+    // fill(255,255,255,10);
+    box(BOX_SZ, BOX_SZ, BOX_SZ);
+}
+    </script>
+</body>
+</html>
