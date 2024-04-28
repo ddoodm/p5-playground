@@ -8,7 +8,7 @@
 </head>
 <body>
     <script>
-const BOX_SZ = 200;
+const BOX_SZ = 400;
 
 let poi;
 
@@ -29,29 +29,64 @@ function drawPoi(poi) {
 }
 
 function setup() {
-  createCanvas(400, 400, WEBGL);
+  createCanvas(640, 640, WEBGL);
+  ortho(-width/2, width/2, -height/2, height/2);
   poi = createVector(1, 0, 0);
+}
+
+function plotSrgbCube() {
+    strokeWeight(10);
+    const d = 0.01;
+    for(let z = 0; z < 1+d; z+=d) {
+        for(let y = 0; y < 1+d; y+=d) {
+            for (let x = 0; x < 1+d; x+=d) {
+                if(x === 0 || y === 0 || z === 0) {
+                    drawPoi(createVector(x,y,z));
+                }
+
+                // const slice = (x + y + z) / 3;
+                // const time = sin(millis() * 0.0005) * 0.5 + 0.5;
+                // // const time = 0.25;
+                // if(slice > time || slice < time-0.1) {
+                //     continue;
+                // }
+
+                // if(x === 0 || y === 0 || z === 0
+                //   || x > 1-d || y > 1-d || z > 1-d) {
+                    // drawPoi(createVector(x,y,z));
+                //   }
+            }
+        }
+    }
 }
 
 function draw() {
   background(25);
   
   rotateX(65 / 180 * PI);
-  rotateZ(millis() * 0.0005);
+//   rotateZ(millis() * 0.0005);
+  rotateZ(45 / 180 * PI);
+
+//   plotSrgbCube();
 
 //   poi.x = mod(poi.x - 0.01, 1);
 //   poi.y = mod(poi.y + 0.01, 1);
 //   poi.z = mod(poi.z + 0.01, 1);
 
     // through grey
-    // for(let i = 0; i < 10; i++) {
-    //     strokeWeight(10);
-    //     const time = millis() + i * 20;
-    //     const t = (1 - Math.sin(time * 0.001)) / 2;
-    //     poi.set(1 - t, t, t);
-    
-    //     drawPoi(poi);
-    // }
+    for(let i = 0; i < 30; i++) {
+        strokeWeight(10 * (i / 30)**0.25);
+        const time = millis() + i * 10;
+        // const t = (1 - Math.sin(time * 0.002)) / 4;
+        // poi.set(1 - t, t, t);
+        const t = 0.5 + 0.5 * Math.sin(time * 0.002);
+        const t2 = 0.5 + 0.5 * Math.sin(time * 0.0002);
+        const a = createVector(0.0,0.0,0.0);
+        const b = createVector(1.0,t2,1.0);
+        drawPoi(
+            a.add(b.sub(a).mult(t))
+        );
+    }
 
     // rainbow
     // for(let i = 0; i < 40; i++) {
@@ -77,15 +112,15 @@ function draw() {
     // }
 
     // RG vortex
-    for(let i = 0; i < 400; i++) {
-        strokeWeight(10);
-        const time = millis() + i * 10;
-        const t = (1 - Math.sin(time * 0.005)) / 2;
-        const ct = (1 + Math.cos(time * 0.005)) / 2;
-        poi.set(t, ct, (time * 0.0001) % 1);
+    // for(let i = 0; i < 400; i++) {
+    //     strokeWeight(10);
+    //     const time = millis() + i * 5;
+    //     const t = (1 - Math.sin(time * 0.005)) / 2;
+    //     const ct = (1 + Math.cos(time * 0.005)) / 2;
+    //     poi.set(t, ct, (time * 0.0001) % 1);
     
-        drawPoi(poi);
-    }
+    //     drawPoi(poi);
+    // }
 
     // GB vortex
     // for(let i = 0; i < 400; i++) {
@@ -101,7 +136,6 @@ function draw() {
     noFill();
     stroke(255,255,255,64);
     strokeWeight(1);
-    // fill(255,255,255,10);
     box(BOX_SZ, BOX_SZ, BOX_SZ);
 }
     </script>

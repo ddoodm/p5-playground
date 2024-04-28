@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>p5.js Sketch</title>
+    <script src="https://cdn.jsdelivr.net/npm/p5@latest"></script>
+</head>
+<body>
+    <script>
+const BOX_SZ = 400;
+
+function sRGBToLinearRGB(color) {
+    // Assume color is an array [R, G, B] with values from 0 to 1
+    return color.map(value => {
+        if (value <= 0.04045) {
+            return value / 12.92;
+        } else {
+            return Math.pow((value + 0.055) / 1.055, 2.4);
+        }
+    });
+}
+
+function linearRGBToXYZ(rgb) {
+    // Conversion Matrix from sRGB to XYZ, assuming D65 white point
+    const matrix = [
+        [0.4124564, 0.3575761, 0.1804375],
+        [0.2126729, 0.7151522, 0.0721750],
+        [0.0193339, 0.1191920, 0.9503041]
+    ];
+
+    // Matrix multiplication
+    let x = rgb[0] * matrix[0][0] + rgb[1] * matrix[0][1] + rgb[2] * matrix[0][2];
+    let y = rgb[0] * matrix[1][0] + rgb[1] * matrix[1][1] + rgb[2] * matrix[1][2];
+    let z = rgb[0] * matrix[2][0] + rgb[1] * matrix[2][1] + rgb[2] * matrix[2][2];
+
+    return [x, y, z];
+}
+
+function XYZToOKLab(xyz) {
+    // XYZ to LMS cone responses
+    const lms = xyz.map((value, index) => {
+        const m = [
+            [0.8189330101, 0.3618667424, -0.1288597137],
+            [0.0329845436, 0.9293118715, 0.0361456387],
+            [0.0482003018, 0.2643662691, 0.6338517070]
+        ];
+        return m[index][0] * xyz[0] + m[index][1] * xyz[1] + m[index][2] * xyz[2];
+    });
+
+    // Apply nonlinear response function
+    const lms_c = lms.map(value => Math.cbrt(value));
+
+    // Convert LMS to OKLab
+    const L = 0.2104542553 * lms_c[0] + 0.7936177850 * lms_c[1] - 0.0040720468 * lms_c[2];
+    const a = 1.9779984951 * lms_c[0] - 2.4285922050 * lms_c[1] + 0.4505937099 * lms_c[2];
+    const b = 0.0259040371 * lms_c[0] + 0.7827717662 * lms_c[1] - 0.8086757660 * lms_c[2];
+
+    return [L, a, b];
+}
+
+function sRGBToHSL(r, g, b) {
+    // Normalize the RGB values
+    // r /= 255, g /= 255, b /= 255;
+    
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    
+    let h, s, l = (max + min) / 2;
+
+    if (max === min) {
+        h = s = 0; // achromatic
+    } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch(max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+    }
+
+    return [h, s, l]; // Convert hue to degrees and saturation, lightness to percentage
+}
+
+
+function mod(n, m) {
+    return ((n % m) + m) % m;
+}
+
+function toBoxBasis(vec) {
+  let v = vec.copy();
+  v.sub(0.5, 0.5, 0.5);
+  v.mult(BOX_SZ, BOX_SZ, BOX_SZ);
+  return v;
+}
+
+function drawPoi(poi) {
+    stroke(poi.x * 255, poi.y * 255, poi.z * 255);
+    point(toBoxBasis(poi));
+}
+
+function setup() {
+  createCanvas(640, 640, WEBGL);
+  ortho(-width/2, width/2, -height/2, height/2);
+}
+
+function plotOklab() {
+    const t = max(0, min(1.0, (millis() - 1000) * 0.000025));
+    // const t2 = max(0, min(1.0, (millis() - 4000) * 0.0005));
+    // const t3 = max(0, min(1.0, (millis() - 7000) * 0.0001));
+
+    const res = 4;
+    strokeWeight(res * 2);
+    const d = 1/(255 / res);
+    for(let sb = 0; sb <= 1; sb+=d) {
+        for(let sg = 0; sg <= 1; sg+=d) {
+            for (let sr = 0; sr <= 1; sr+=d) {
+                // if (sr > 0 && sg > 0 && sb > 0 &&
+                //     sr < 1-d && sg < 1-d && sb < 1-d) {
+                //         continue;
+                //     }
+
+
+                // let sRGBColor = [sr, sg, sb];
+                // let [lr, lg, lb] = sRGBToLinearRGB(sRGBColor);
+                // let [x, y, z] = linearRGBToXYZ([lr, lg, lb]);
+                // let [l, a, b] = XYZToOKLab([x, y, z]);
+
+                const [h,s,l] = sRGBToHSL(sr, sg, sb);
+
+                let px = lerp(sr, h, t);
+                let py = lerp(sg, s, t);
+                let pz = lerp(sb, l, t);
+
+                // px = lerp(px, x, t2);
+                // py = lerp(py, y, t2);
+                // pz = lerp(pz, z, t2);
+
+                // px = lerp(px, l, t3);
+                // py = lerp(py, a, t3);
+                // pz = lerp(pz, b, t3);
+
+                stroke(sr*255, sg*255, sb*255);
+                point(
+                    px*BOX_SZ - BOX_SZ / 2,
+                    py*BOX_SZ - BOX_SZ / 2,
+                    pz*BOX_SZ - BOX_SZ / 2
+                );
+
+            }
+        }
+    }
+}
+
+function draw() {
+  background(25);
+  
+  rotateX(65 / 180 * PI);
+  rotateZ(millis() * 0.000025);
+  rotateZ(45 / 180 * PI);
+
+  plotOklab();
+
+    noFill();
+    stroke(255,255,255,64);
+    strokeWeight(1);
+    box(BOX_SZ, BOX_SZ, BOX_SZ);
+}
+    </script>
+</body>
+</html>
