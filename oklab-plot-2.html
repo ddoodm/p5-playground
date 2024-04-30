@@ -59,39 +59,13 @@ function XYZToOKLab(xyz) {
     return [L, a, b];
 }
 
-function sRGBToHSL(r, g, b) {
-    // Normalize the RGB values
-    // r /= 255, g /= 255, b /= 255;
-    
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    
-    let h, s, l = (max + min) / 2;
-
-    if (max === min) {
-        h = s = 0; // achromatic
-    } else {
-        const d = max - min;
-        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-        switch(max) {
-            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-            case g: h = (b - r) / d + 2; break;
-            case b: h = (r - g) / d + 4; break;
-        }
-        h /= 6;
-    }
-
-    return [h, s, l]; // Convert hue to degrees and saturation, lightness to percentage
-}
-
-
 function mod(n, m) {
     return ((n % m) + m) % m;
 }
 
 function toBoxBasis(vec) {
   let v = vec.copy();
-  v.sub(0.5, 0.5, 0.5);
+//   v.sub(0.5, 0.5, 0.5);
   v.mult(BOX_SZ, BOX_SZ, BOX_SZ);
   return v;
 }
@@ -106,12 +80,16 @@ function setup() {
   ortho(-width/2, width/2, -height/2, height/2);
 }
 
-function plotOklab() {
-    const t = max(0, min(1.0, (millis() - 1000) * 0.000025));
-    // const t2 = max(0, min(1.0, (millis() - 4000) * 0.0005));
-    // const t3 = max(0, min(1.0, (millis() - 7000) * 0.0001));
+function sRGBToOKLab(srgb) {
+    let [lr, lg, lb] = sRGBToLinearRGB(srgb);
+    let [x, y, z] = linearRGBToXYZ([lr, lg, lb]);
+    return XYZToOKLab([x, y, z]);
+}
 
-    const res = 20;
+function plotOklab() {
+    const t = max(0, min(1.0, (millis() - 1000) * 0.00025));
+
+    const res = 10;
     strokeWeight(res * 2);
     const d = 1/(255 / res);
     for(let sb = 0; sb <= 1; sb+=d) {
@@ -123,30 +101,22 @@ function plotOklab() {
                 //     }
 
 
-                // let sRGBColor = [sr, sg, sb];
-                // let [lr, lg, lb] = sRGBToLinearRGB(sRGBColor);
-                // let [x, y, z] = linearRGBToXYZ([lr, lg, lb]);
-                // let [l, a, b] = XYZToOKLab([x, y, z]);
+                let sRGBColor = [sr, sg, sb];
+                let [lr, lg, lb] = sRGBToLinearRGB(sRGBColor);
+                let [x, y, z] = linearRGBToXYZ([lr, lg, lb]);
+                let [l, a, b] = XYZToOKLab([x, y, z]);
 
-                const [h,s,l] = sRGBToHSL(sr, sg, sb);
+                if (l > t) {
+                    continue;
+                }
 
-                let px = lerp(sr, h, t);
-                let py = lerp(sg, s, t);
-                let pz = lerp(sb, l, t);
-
-                // px = lerp(px, x, t2);
-                // py = lerp(py, y, t2);
-                // pz = lerp(pz, z, t2);
-
-                // px = lerp(px, l, t3);
-                // py = lerp(py, a, t3);
-                // pz = lerp(pz, b, t3);
+                const p = createVector(l, a, b);
 
                 stroke(sr*255, sg*255, sb*255);
                 point(
-                    px*BOX_SZ - BOX_SZ / 2,
-                    py*BOX_SZ - BOX_SZ / 2,
-                    pz*BOX_SZ - BOX_SZ / 2
+                    p.x*BOX_SZ,
+                    p.y*BOX_SZ,
+                    p.z*BOX_SZ
                 );
 
             }
@@ -156,17 +126,35 @@ function plotOklab() {
 
 function draw() {
   background(25);
+
+  const centre = toBoxBasis(
+    // createVector(0.5, 1, 1)
+    createVector(-0.5, 0, 0)
+  );
   
-  rotateX(65 / 180 * PI);
-  rotateZ(-millis() * 0.000025);
-  rotateZ(45 / 180 * PI);
+  rotateX(75 / 180 * PI);
+  rotateZ(millis() * 0.0005);
+//   rotateZ(45 / 180 * PI);
+  translate(centre);
 
   plotOklab();
 
     noFill();
-    stroke(255,255,255,64);
+    strokeWeight(3);
+    stroke(255,0,0);
+    line(0, 0, 0, BOX_SZ, 0, 0);
+    stroke(0,255,0);
+    line(0, 0, 0, 0, BOX_SZ, 0);
+    stroke(0,0,255);
+    line(0, 0, 0, 0, 0, BOX_SZ);
+
     strokeWeight(1);
-    box(BOX_SZ, BOX_SZ, BOX_SZ);
+    stroke(255,0,0);
+    line(0, 0, 0, BOX_SZ*50, 0, 0);
+    stroke(0,255,0);
+    line(0, 0, 0, 0, BOX_SZ*50, 0);
+    stroke(0,0,255);
+    line(0, 0, 0, 0, 0, BOX_SZ*50);
 }
     </script>
 </body>
