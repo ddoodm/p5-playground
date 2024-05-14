@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>p5.js Sketch</title>
+    <script src="https://cdn.jsdelivr.net/npm/p5@latest"></script>
+</head>
+<body>
+    <script>
+const BOX_SZ = 400;
+
+let img;
+
+function sRGBToLinearRGB(color) {
+    // Assume color is an array [R, G, B] with values from 0 to 1
+    return color.map(value => {
+        if (value <= 0.04045) {
+            return value / 12.92;
+        } else {
+            return Math.pow((value + 0.055) / 1.055, 2.4);
+        }
+    });
+}
+
+function linearRGBToXYZ(rgb) {
+    // Conversion Matrix from sRGB to XYZ, assuming D65 white point
+    const matrix = [
+        [0.4124564, 0.3575761, 0.1804375],
+        [0.2126729, 0.7151522, 0.0721750],
+        [0.0193339, 0.1191920, 0.9503041]
+    ];
+
+    // Matrix multiplication
+    let x = rgb[0] * matrix[0][0] + rgb[1] * matrix[0][1] + rgb[2] * matrix[0][2];
+    let y = rgb[0] * matrix[1][0] + rgb[1] * matrix[1][1] + rgb[2] * matrix[1][2];
+    let z = rgb[0] * matrix[2][0] + rgb[1] * matrix[2][1] + rgb[2] * matrix[2][2];
+
+    return [x, y, z];
+}
+
+function XYZToOKLab(xyz) {
+    // XYZ to LMS cone responses
+    const lms = xyz.map((value, index) => {
+        const m = [
+            [0.8189330101, 0.3618667424, -0.1288597137],
+            [0.0329845436, 0.9293118715, 0.0361456387],
+            [0.0482003018, 0.2643662691, 0.6338517070]
+        ];
+        return m[index][0] * xyz[0] + m[index][1] * xyz[1] + m[index][2] * xyz[2];
+    });
+
+    // Apply nonlinear response function
+    const lms_c = lms.map(value => Math.cbrt(value));
+
+    // Convert LMS to OKLab
+    const L = 0.2104542553 * lms_c[0] + 0.7936177850 * lms_c[1] - 0.0040720468 * lms_c[2];
+    const a = 1.9779984951 * lms_c[0] - 2.4285922050 * lms_c[1] + 0.4505937099 * lms_c[2];
+    const b = 0.0259040371 * lms_c[0] + 0.7827717662 * lms_c[1] - 0.8086757660 * lms_c[2];
+
+    return [L, a, b];
+}
+
+function OKLabToXYZ(L, a, b) {
+    // Convert OKLab to LMS using the inverse of the OKLab to LMS matrix
+    const l = L + 0.3963377774 * a + 0.2158037573 * b;
+    const m = L - 0.1055613458 * a - 0.0638541728 * b;
+    const s = L - 0.0894841775 * a - 1.2914855480 * b;
+
+    // Convert LMS to XYZ
+    const lms = [l*l*l, m*m*m, s*s*s]; // Cube to undo companding
+    const matrix = [
+        [ 0.99999999845051981432, 0.39633779217376785678, 0.21580375806075880339],
+        [ 1.0000000088817607767, -0.10556134231930621637, -0.063854174771705903402],
+        [ 1.0000000546724109177, -0.089484182094965759041, -1.2914855378640917399]
+    ];
+
+    let x = matrix[0][0] * lms[0] + matrix[0][1] * lms[1] + matrix[0][2] * lms[2];
+    let y = matrix[1][0] * lms[0] + matrix[1][1] * lms[1] + matrix[1][2] * lms[2];
+    let z = matrix[2][0] * lms[0] + matrix[2][1] * lms[1] + matrix[2][2] * lms[2];
+
+    return [x, y, z];
+}
+
+function XYZToLinearRGB(xyz) {
+    // Conversion Matrix from XYZ to Linear RGB
+    const matrix = [
+        [ 3.2404542, -1.5371385, -0.4985314],
+        [-0.9692660,  1.8760108,  0.0415560],
+        [ 0.0556434, -0.2040259,  1.0572252]
+    ];
+
+    // Matrix multiplication
+    let r = xyz[0] * matrix[0][0] + xyz[1] * matrix[0][1] + xyz[2] * matrix[0][2];
+    let g = xyz[0] * matrix[1][0] + xyz[1] * matrix[1][1] + xyz[2] * matrix[1][2];
+    let b = xyz[0] * matrix[2][0] + xyz[1] * matrix[2][1] + xyz[2] * matrix[2][2];
+
+    return [r, g, b];
+}
+
+function linearRGBTosRGB(linearRGB) {
+    // Apply gamma correction to each channel
+    return linearRGB.map(value => {
+        if (value <= 0.0031308) {
+            return 12.92 * value;
+        } else {
+            return 1.055 * Math.pow(value, 1 / 2.4) - 0.055;
+        }
+    });
+}
+
+function mod(n, m) {
+    return ((n % m) + m) % m;
+}
+
+function toBoxBasis(vec) {
+  let v = vec.copy();
+//   v.sub(0.5, 0.5, 0.5);
+  v.mult(BOX_SZ, BOX_SZ, BOX_SZ);
+  return v;
+}
+
+function drawPoi(poi) {
+    stroke(poi.x * 255, poi.y * 255, poi.z * 255);
+    point(toBoxBasis(poi));
+}
+
+function setup() {
+    const zoom = 3;
+  createCanvas(640, 640, WEBGL);
+  ortho(-width/zoom, width/zoom, -height/zoom, height/zoom);
+
+  img = loadImage('sculpture.jpg');
+//   img = img.get();
+//   img.resize(50, 0);
+  img.loadPixels();
+}
+
+function sRGBToOKLab(srgb) {
+    let [lr, lg, lb] = sRGBToLinearRGB(srgb);
+    // let [x, y, z] = linearRGBToXYZ([lr, lg, lb]);
+    // return XYZToOKLab([x, y, z]);
+    return linearRGBToOklab([lr,lg,lb]);
+}
+
+function matrixMultiply(m, v) {
+  return [
+    m[0] * v[0] + m[1] * v[1] + m[2] * v[2],
+    m[3] * v[0] + m[4] * v[1] + m[5] * v[2],
+    m[6] * v[0] + m[7] * v[1] + m[8] * v[2],
+  ];
+}
+function linearRGBToOklab(c) {
+  const [r, g, b] = c;
+
+  const l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
+  const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
+  const s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
+
+  const l_ = Math.cbrt(l);
+  const m_ = Math.cbrt(m);
+  const s_ = Math.cbrt(s);
+
+  // dprint-ignore
+  const lmsToOklab = [
+    +0.2104542553, +0.7936177850, -0.0040720468,
+    +1.9779984951, -2.4285922050, +0.4505937099,
+    +0.0259040371, +0.7827717662, -0.8086757660,
+  ];
+  return matrixMultiply(lmsToOklab, [l_, m_, s_]);
+}
+function oklabToLinearRGB(c) {
+  const l_ = c[0] + 0.3963377774 * c[1] + 0.2158037573 * c[2];
+  const m_ = c[0] - 0.1055613458 * c[1] - 0.0638541728 * c[2];
+  const s_ = c[0] - 0.0894841775 * c[1] - 1.291485548 * c[2];
+
+  const l = l_ * l_ * l_;
+  const m = m_ * m_ * m_;
+  const s = s_ * s_ * s_;
+
+  // dprint-ignore
+  const lmsToLinearsRGB = [
+    +4.0767416621, -3.3077115910, +0.2309699292,
+    -1.2684380046, +2.6097574011, -0.3413193965,
+    -0.0041960863, -0.7034186147, +1.7076147010,
+  ];
+  return matrixMultiply(lmsToLinearsRGB, [l, m, s]);
+}
+
+function OKLabToOKLch([l, a, b]) {
+    const c = Math.sqrt(a * a + b * b);
+    const h = Math.atan2(b, a);
+    return [l, c, h];
+}
+
+function OKLchToOKLab([l, c, h]) {
+    const a = c * Math.cos(h);
+    const b = c * Math.sin(h);
+    return [l, a, b];
+}
+
+// function plotOKLabClippedBySRGBGamut() {
+//     const res = 5 / 255;
+//     const bounds_a = 0.3;
+//     const bounds_b = 0.3;
+//     strokeWeight(8 * 2);
+//     for(let l = 0; l <= 1; l += res) {
+//         for(let a = -bounds_a; a <= bounds_a; a += res) {
+//             for(let b = -bounds_b; b <= bounds_b; b += res) {
+//                 const [sr, sg, sb] = linearRGBTosRGB(oklabToLinearRGB(l, a, b));
+//                 if (sr < 0 || sg < 0 || sb < 0 || sr > 1 || sg > 1 || sb > 1) {
+//                     continue;
+//                 }
+
+//                 const p = createVector(l, a, b);
+
+//                 stroke(sr*255, sg*255, sb*255);
+//                 point(
+//                     p.x*BOX_SZ,
+//                     p.y*BOX_SZ,
+//                     p.z*BOX_SZ
+//                 );
+//             }
+//         }
+//     }
+// }
+
+function plotSRGBInOKLabSpace() {
+    const t = sin((millis() - 1000) * 0.0008) * 0.5 + 0.5;
+
+    const res = 5;
+    strokeWeight(res *2);
+    const d = 1/(255 / res);
+    for(let sb = 0; sb <= 1; sb+=d) {
+        for(let sg = 0; sg <= 1; sg+=d) {
+            for (let sr = 0; sr <= 1; sr+=d) {
+                // if (sr > 0 && sg > 0 && sb > 0 &&
+                //     sr < 1-d && sg < 1-d && sb < 1-d) {
+                //         continue;
+                //     }
+
+
+                let sRGBColor = [sr, sg, sb];
+                let [lr, lg, lb] = sRGBToLinearRGB(sRGBColor);
+                // let [x, y, z] = linearRGBToXYZ([lr, lg, lb]);
+                let [l, a, b] = linearRGBToOklab([lr,lg,lb]);
+                let [_, c, h] = OKLabToOKLch([l, a, b]);
+
+                // if (l > t) {
+                //     continue;
+                // }
+
+                // const p = createVector(l, a, b*0.2);
+
+                stroke(sr*255, sg*255, sb*255);
+                point(l*BOX_SZ,c*BOX_SZ,h/(PI*2)*BOX_SZ);
+                // point(
+                //     p.x*BOX_SZ,
+                //     p.y*BOX_SZ,
+                //     p.z*BOX_SZ
+                // );
+
+            }
+        }
+    }
+}
+
+function isOutOfGamut(rgb) {
+    return rgb.some(v => v < 0 || v > 255);
+}
+
+function draw() {
+  background(25);
+
+  const centre = toBoxBasis(
+    // createVector(0,0,0),
+    // createVector(0.5, 1, 1)
+    // createVector(-0.5, 0, 0)
+    // createVector(-0.4, -0.15, 0)
+    createVector(-0.4, -0.15, -0.15)
+  );
+  
+//   rotateX(90 / 180 * PI);
+  rotateX(75 / 180 * PI);
+//   rotateZ(25 / 180 * PI + millis() * 0.00005);
+  rotateZ(45 / 180 * PI);
+  translate(centre);
+
+//   plotSRGBInOKLabSpace();
+//   plotOKLabClippedBySRGBGamut();
+
+    const t = 1 - min(1, pow(millis() * 0.0001, 3));
+    strokeWeight(5);
+    img.loadPixels();
+
+    // sRGB:
+    // for(let x = 0; x < img.width; x+=2) {
+    //     for(let y = 0; y < img.height; y+=2) {
+    //         const idx = (y*img.width + x)*4;
+    //         const sr = img.pixels[idx];
+    //         const sg = img.pixels[idx+1];
+    //         const sb = img.pixels[idx+2];
+
+    //         const px = lerp(x, sr, t);
+    //         const py = lerp(y, sg, t);
+    //         const pz = lerp(0, sb, t);
+
+    //         stroke(sr, sg, sb);
+    //         point(px, py, pz);
+    //     }
+    // }
+
+    // OKLab
+    // for(let x = 0; x < img.width; x+=2) {
+    //     for(let y = 0; y < img.height; y+=2) {
+    //         const idx = (y*img.width + x)*4;
+    //         const sr = img.pixels[idx];
+    //         const sg = img.pixels[idx+1];
+    //         const sb = img.pixels[idx+2];
+
+    //         const [l, a, b] = RGBToOKLab([sr,sg,sb]);
+
+    //         const px = lerp(x, l*5, t);
+    //         const py = lerp(y, a*15, t);
+    //         const pz = lerp(0, b*15, t);
+
+    //         stroke(sr, sg, sb);
+    //         point(px, py, pz);
+    //     }
+    // }
+
+    const t2 = 1;// pow(min(PI/3, millis() * 0.00025), 3);
+    // // OKLch
+    for(let x = 0; x < img.width; x+=2) {
+        for(let y = 0; y < img.height; y+=2) {
+            const idx = (y*img.width + x)*4;
+            let sr = img.pixels[idx];
+            let sg = img.pixels[idx+1];
+            let sb = img.pixels[idx+2];
+
+            let [l, c, h] = OKLabToOKLch(sRGBToOKLab([sr,sg,sb]));
+
+
+            const distFromRed = Math.abs(h);
+            // if (distFromRed < 1) {
+            //     h += 0.01;
+            // }
+            h += Math.max(0, (PI-distFromRed*2)) * t2;
+
+            const lab = OKLchToOKLab([l,c,h]);
+            const lrgb = oklabToLinearRGB(lab);
+            const rgb = linearRGBTosRGB(lrgb);
+            sr=rgb[0];sg=rgb[1];sb=rgb[2];
+            
+            // if(isOutOfGamut(rgb)) {
+            //     continue;
+            // }
+
+
+            const px = lerp(x, l*5, t);
+            const py = lerp(y, c*15, t);
+            const pz = lerp(0, h*50, t);
+
+            stroke(sr, sg, sb);
+            // point(px,py,pz);
+            point(px,py,pz);
+            // point(x,0,img.height-y);
+        }
+    }
+
+
+    // for(let i = 0; i < img.pixels.length; i+=4) {
+    //     let [l,c,h] = lchMap.get(i);
+
+    //     h += 0.01;
+
+    //     const lab = OKLchToOKLab([l,c,h]);
+    //     const lrgb = oklabToLinearRGB(lab);
+    //     const [r,g,b] = linearRGBTosRGB(lrgb);
+
+    //     img.pixels[i] = r;
+    //     img.pixels[i+1] = g;
+    //     img.pixels[i+2] = b;
+    // }
+    // img.updatePixels();
+
+
+    // for(const idx of greenIndexes) {
+    //     img.pixels[idx] -= 1;
+    //     img.pixels[idx+1] -= 1;
+    //     img.pixels[idx+2] -= 1;
+    // }
+    // img.updatePixels();
+    
+    // const pt = [
+    //     0.5 + 0.5*sin(millis()*0.001),
+    //     -0.1,
+    //     0.1,
+    // ];
+    // const pt_rgb = linearRGBTosRGB(oklabToLinearRGB(pt));
+    // if(pt_rgb.every(v => v > 0 && v < 1)) {
+    //     strokeWeight(20);
+    //     stroke(pt_rgb[0]*255, pt_rgb[1]*255, pt_rgb[2]*255);
+    //     point(pt[0]*BOX_SZ, pt[1]*BOX_SZ, pt[2]*BOX_SZ);
+    // }
+
+
+    noFill();
+    strokeWeight(1);
+    stroke(255,0,0);
+    line(0, 0, 0, BOX_SZ*50, 0, 0);
+    stroke(0,255,0);
+    line(0, 0, 0, 0, BOX_SZ*50, 0);
+    stroke(0,0,255);
+    line(0, 0, 0, 0, 0, BOX_SZ*50);
+}
+    </script>
+</body>
+</html>
