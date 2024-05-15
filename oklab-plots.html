@@ -81,12 +81,12 @@ function setup() {
 }
 
 function plotOklab() {
-    const t = max(0, min(1.0, (millis() - 1000) * 0.0005));
-    const t2 = max(0, min(1.0, (millis() - 4000) * 0.0005));
-    const t3 = max(0, min(1.0, (millis() - 7000) * 0.0001));
+    const t = max(0, min(1.0, (millis() - 10000) * 0.00005));
+    const t2 = max(0, min(1.0, (millis() - 40000) * 0.00005));
+    const t3 = max(0, min(1.0, (millis() - 70000) * 0.00001));
 
-    const res = 8;
-    strokeWeight(res * 2);
+    const res = 3;
+    strokeWeight(16);
     const d = 1/(255 / res);
     for(let sb = 0; sb <= 1; sb+=d) {
         for(let sg = 0; sg <= 1; sg+=d) {
@@ -110,9 +110,9 @@ function plotOklab() {
                 py = lerp(py, y, t2);
                 pz = lerp(pz, z, t2);
 
-                px = lerp(px, l, t3);
-                py = lerp(py, a, t3);
-                pz = lerp(pz, b, t3);
+                px = lerp(px, a, t3);
+                py = lerp(py, b, t3);
+                pz = lerp(pz, l, t3);
 
                 stroke(sr*255, sg*255, sb*255);
                 point(
@@ -130,7 +130,7 @@ function draw() {
   background(25);
   
   rotateX(65 / 180 * PI);
-  rotateZ(millis() * 0.0005);
+  rotateZ(90/180*PI + millis() * 0.00005);
   rotateZ(45 / 180 * PI);
 
   plotOklab();

@@ -188,7 +188,8 @@ function plotOKLabClippedBySRGBGamut() {
 }
 
 function plotSRGBInOKLabSpace() {
-    const t = sin((millis() - 1000) * 0.0008) * 0.5 + 0.5;
+    // const t = sin((millis() - 1000) * 0.0008) * 0.5 + 0.5;
+    const t = pow(max(0, min(1, millis() * 0.000025)), 3);
 
     const res = 20;
     strokeWeight(res *2);
@@ -205,21 +206,21 @@ function plotSRGBInOKLabSpace() {
                 let sRGBColor = [sr, sg, sb];
                 let [lr, lg, lb] = sRGBToLinearRGB(sRGBColor);
                 let [x, y, z] = linearRGBToXYZ([lr, lg, lb]);
-                let [l, a, b] = OKLabToOKLch(XYZToOKLab([x, y, z]));
+                let [l, a, b] = XYZToOKLab([x, y, z]);
+                let [_, c, h] = OKLabToOKLch([l, a, b]);
 
-                // if (l > t) {
-                //     continue;
-                // }
+                h *= 0.2;
 
-                const p = createVector(l, a, b*0.2);
+                const px = l;
+                const py = lerp(a, c, t);
+                const pz = lerp(b, h, t);
 
                 stroke(sr*255, sg*255, sb*255);
                 point(
-                    p.x*BOX_SZ,
-                    p.y*BOX_SZ,
-                    p.z*BOX_SZ
+                    px*BOX_SZ,
+                    py*BOX_SZ,
+                    pz*BOX_SZ
                 );
-
             }
         }
     }
@@ -237,8 +238,8 @@ function draw() {
   
 //   rotateX(90 / 180 * PI);
   rotateX(75 / 180 * PI);
-  rotateZ(-PI*0.5+ millis() * 0.00005);
-//   rotateZ(90 / 180 * PI);
+//   rotateZ(-PI*0.5+ millis() * 0.00005);
+  rotateZ(90 / 180 * PI);
   translate(centre);
 
   plotSRGBInOKLabSpace();
