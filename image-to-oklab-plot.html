@@ -126,7 +126,7 @@ function drawPoi(poi) {
 }
 
 function setup() {
-    const zoom = 3;
+    const zoom = 2;
   createCanvas(640, 640, WEBGL);
   ortho(-width/zoom, width/zoom, -height/zoom, height/zoom);
 
@@ -269,6 +269,87 @@ function isOutOfGamut(rgb) {
     return rgb.some(v => v < 0 || v > 255);
 }
 
+function smoothstep(edge0, edge1, x) {
+    // Scale, bias and saturate x to 0..1 range
+    x = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+    // Evaluate polynomial
+    return x * x * (3 - 2 * x);
+}
+
+function drawPrism(cz, opacity) {
+    const w = BOX_SZ;
+    const d = BOX_SZ*4;
+    const h = BOX_SZ;
+
+    const rbb = [w,0,0];
+    const rbt = [w,0,h];
+    const rft = [w,d,h];
+    const rfb = [w,d,0];
+    const lbb = [0,0,0];
+    const lbt = [0,0,h];
+    const lft = [0,d,h];
+    const lfb = [0,d,0];
+
+    noStroke();
+
+    push();
+    {
+        translate(0,-d/2,cz*h/2);
+
+        scale(1,1,0.5);
+
+        beginShape(QUADS);
+        fill(255,0,0,opacity);
+        vertex(...rbb);
+        fill(255,0,0,0);
+        vertex(...rbt);
+        fill(255,0,0,0);
+        vertex(...rft);
+        fill(255,0,0,opacity);
+        vertex(...rfb);
+        endShape();
+
+        translate(0,0,-h);
+
+        beginShape(QUADS);
+        fill(255,0,0,0);
+        vertex(...rbb);
+        fill(255,0,0,opacity);
+        vertex(...rbt);
+        fill(255,0,0,opacity);
+        vertex(...rft);
+        fill(255,0,0,0);
+        vertex(...rfb);
+        endShape();
+
+        // translate(0,0,h);
+        // beginShape(QUADS);
+        // fill(255,0,0,0);
+        // vertex(...lft);
+        // fill(255,0,0,0);
+        // vertex(...rft);
+        // fill(255,0,0,opacity);
+        // vertex(...rfb);
+        // fill(255,0,0,opacity);
+        // vertex(...lfb);
+        // endShape();
+
+        // translate(0,0,-h);
+        // beginShape(QUADS);
+        // fill(255,0,0,opacity);
+        // vertex(...lft);
+        // fill(255,0,0,opacity);
+        // vertex(...rft);
+        // fill(255,0,0,0);
+        // vertex(...rfb);
+        // fill(255,0,0,0);
+        // vertex(...lfb);
+        // endShape();
+    }
+    pop();
+
+}
+
 function draw() {
   background(25);
 
@@ -282,14 +363,14 @@ function draw() {
   
 //   rotateX(90 / 180 * PI);
   rotateX(75 / 180 * PI);
-//   rotateZ(25 / 180 * PI + millis() * 0.00005);
+//   rotateZ(25 / 180 * PI + millis() * 0.0005);
   rotateZ(45 / 180 * PI);
   translate(centre);
 
 //   plotSRGBInOKLabSpace();
 //   plotOKLabClippedBySRGBGamut();
 
-    const t = 1 - min(1, pow(millis() * 0.0001, 3));
+    const t = 1;// 1 - min(1, pow(millis() * 0.0001, 3));
     strokeWeight(5);
     img.loadPixels();
 
@@ -329,22 +410,22 @@ function draw() {
     //     }
     // }
 
-    const t2 = 1;// pow(min(PI/3, millis() * 0.00025), 3);
+    let maxL = 0;
+
+    const t1 = smoothstep(0.0, PI/3, millis() * 0.0005);
+    const t2 = smoothstep(0.0, PI/3, -0.5+ millis() * 0.00025);
+    const t3 = smoothstep(0.0, PI/3, -3+ millis() * 0.0005);
     // // OKLch
     for(let x = 0; x < img.width; x+=2) {
         for(let y = 0; y < img.height; y+=2) {
             const idx = (y*img.width + x)*4;
-            let sr = img.pixels[idx];
-            let sg = img.pixels[idx+1];
-            let sb = img.pixels[idx+2];
+            let sr = img.pixels[idx] / 255;
+            let sg = img.pixels[idx+1] / 255;
+            let sb = img.pixels[idx+2] / 255;
 
             let [l, c, h] = OKLabToOKLch(sRGBToOKLab([sr,sg,sb]));
 
-
             const distFromRed = Math.abs(h);
-            // if (distFromRed < 1) {
-            //     h += 0.01;
-            // }
             h += Math.max(0, (PI-distFromRed*2)) * t2;
 
             const lab = OKLchToOKLab([l,c,h]);
@@ -357,11 +438,12 @@ function draw() {
             // }
 
 
-            const px = lerp(x, l*5, t);
-            const py = lerp(y, c*15, t);
-            const pz = lerp(0, h*50, t);
+            const px = lerp(x / img.width, l, t) * BOX_SZ;
+            const py = lerp(y / img.height, c, t) * BOX_SZ;
+            const pz = lerp(0, h / (PI*2), t) * BOX_SZ;
 
-            stroke(sr, sg, sb);
+
+            stroke(sr*255, sg*255, sb*255);
             // point(px,py,pz);
             point(px,py,pz);
             // point(x,0,img.height-y);
@@ -413,6 +495,9 @@ function draw() {
     line(0, 0, 0, 0, BOX_SZ*50, 0);
     stroke(0,0,255);
     line(0, 0, 0, 0, 0, BOX_SZ*50);
+
+
+    drawPrism(t2, (t1 - t3)*128);
 }
     </script>
 </body>
