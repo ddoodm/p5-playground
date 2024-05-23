@@ -12,6 +12,13 @@ const BOX_SZ = 400;
 
 let img;
 
+function smoothstep(edge0, edge1, x) {
+    // Scale, bias and saturate x to 0..1 range
+    x = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+    // Evaluate polynomial
+    return x * x * (3 - 2 * x);
+}
+
 function sRGBToLinearRGB(color) {
     // Assume color is an array [R, G, B] with values from 0 to 1
     return color.map(value => {
@@ -189,9 +196,9 @@ function plotOKLabClippedBySRGBGamut() {
 
 function plotSRGBInOKLabSpace() {
     // const t = sin((millis() - 1000) * 0.0008) * 0.5 + 0.5;
-    const t = pow(max(0, min(1, millis() * 0.000025)), 3);
+    const t = smoothstep(0, 1, millis() * 0.00001);
 
-    const res = 20;
+    const res = 6;
     strokeWeight(res *2);
     const d = 1/(255 / res);
     for(let sb = 0; sb <= 1; sb+=d) {
@@ -237,9 +244,9 @@ function draw() {
   );
   
 //   rotateX(90 / 180 * PI);
-  rotateX(75 / 180 * PI);
+  rotateX(90 / 180 * PI);
 //   rotateZ(-PI*0.5+ millis() * 0.00005);
-  rotateZ(90 / 180 * PI);
+//   rotateZ(90 / 180 * PI);
   translate(centre);
 
   plotSRGBInOKLabSpace();

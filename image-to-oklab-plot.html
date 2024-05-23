@@ -298,29 +298,36 @@ function drawPrism(cz, opacity) {
 
         scale(1,1,0.5);
 
-        beginShape(QUADS);
-        fill(255,0,0,opacity);
-        vertex(...rbb);
-        fill(255,0,0,0);
-        vertex(...rbt);
-        fill(255,0,0,0);
-        vertex(...rft);
-        fill(255,0,0,opacity);
-        vertex(...rfb);
-        endShape();
+        for(let i=0; i<2; i++) {
+            push();
+            beginShape(QUADS);
+            fill(255,0,0,opacity);
+            vertex(...lbb);
+            fill(255,0,0,0);
+            vertex(...lbt);
+            fill(255,0,0,0);
+            vertex(...lft);
+            fill(255,0,0,opacity);
+            vertex(...lfb);
+            endShape();
 
-        translate(0,0,-h);
+            translate(0,0,-h);
 
-        beginShape(QUADS);
-        fill(255,0,0,0);
-        vertex(...rbb);
-        fill(255,0,0,opacity);
-        vertex(...rbt);
-        fill(255,0,0,opacity);
-        vertex(...rft);
-        fill(255,0,0,0);
-        vertex(...rfb);
-        endShape();
+            beginShape(QUADS);
+            fill(255,0,0,0);
+            vertex(...lbb);
+            fill(255,0,0,opacity);
+            vertex(...lbt);
+            fill(255,0,0,opacity);
+            vertex(...lft);
+            fill(255,0,0,0);
+            vertex(...lfb);
+            endShape();
+            pop();
+
+            translate(w,0,0);
+        }
+
 
         // translate(0,0,h);
         // beginShape(QUADS);
@@ -363,14 +370,15 @@ function draw() {
   
 //   rotateX(90 / 180 * PI);
   rotateX(75 / 180 * PI);
-//   rotateZ(25 / 180 * PI + millis() * 0.0005);
-  rotateZ(45 / 180 * PI);
+//    rotateZ(45 / 180 * PI + millis() * 0.000005);
+rotateZ(45 / 180 * PI);
   translate(centre);
 
 //   plotSRGBInOKLabSpace();
 //   plotOKLabClippedBySRGBGamut();
 
-    const t = 1;// 1 - min(1, pow(millis() * 0.0001, 3));
+    const t = smoothstep(0, 1, min(1, -0.1 + millis() * 0.0001));
+    // const t = min(1, pow(millis() * 0.0001, 3));
     strokeWeight(5);
     img.loadPixels();
 
@@ -412,9 +420,9 @@ function draw() {
 
     let maxL = 0;
 
-    const t1 = smoothstep(0.0, PI/3, millis() * 0.0005);
-    const t2 = smoothstep(0.0, PI/3, -0.5+ millis() * 0.00025);
-    const t3 = smoothstep(0.0, PI/3, -3+ millis() * 0.0005);
+    // const t1 = smoothstep(0.0, PI/3, -0.5+ millis() * 0.0005);
+    const t2 = 0;// smoothstep(0.0, PI/3, -1+ millis() * 0.00025);
+    // const t3 = smoothstep(0.0, PI/3, -4+ millis() * 0.0005);
     // // OKLch
     for(let x = 0; x < img.width; x+=2) {
         for(let y = 0; y < img.height; y+=2) {
@@ -497,7 +505,7 @@ function draw() {
     line(0, 0, 0, 0, 0, BOX_SZ*50);
 
 
-    drawPrism(t2, (t1 - t3)*128);
+    // drawPrism(t2, (t1 - t3)*128);
 }
     </script>
 </body>
