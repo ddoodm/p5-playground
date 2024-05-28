@@ -106,12 +106,19 @@ function setup() {
   ortho(-width/2, width/2, -height/2, height/2);
 }
 
+function smoothstep(edge0, edge1, x) {
+    // Scale, bias and saturate x to 0..1 range
+    x = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+    // Evaluate polynomial
+    return x * x * (3 - 2 * x);
+}
+
 function plotOklab() {
-    const t = max(0, min(1.0, (millis() - 1000) * 0.000025));
+    const t = smoothstep(0, 1, millis() * 0.0000025);
     // const t2 = max(0, min(1.0, (millis() - 4000) * 0.0005));
     // const t3 = max(0, min(1.0, (millis() - 7000) * 0.0001));
 
-    const res = 20;
+    const res = 4;
     strokeWeight(res * 2);
     const d = 1/(255 / res);
     for(let sb = 0; sb <= 1; sb+=d) {
@@ -120,7 +127,7 @@ function plotOklab() {
                 // if (sr > 0 && sg > 0 && sb > 0 &&
                 //     sr < 1-d && sg < 1-d && sb < 1-d) {
                 //         continue;
-                //     }
+                //     } 
 
 
                 // let sRGBColor = [sr, sg, sb];
@@ -131,8 +138,8 @@ function plotOklab() {
                 const [h,s,l] = sRGBToHSL(sr, sg, sb);
 
                 let px = lerp(sr, h, t);
-                let py = lerp(sg, s, t);
-                let pz = lerp(sb, l, t);
+                let py = lerp(sg, l, t);
+                let pz = lerp(sb, s, t);
 
                 // px = lerp(px, x, t2);
                 // py = lerp(py, y, t2);
